@@ -24,7 +24,7 @@ final class JsonSerializer
 	{
 		$serialized = (object) [
 			'name' => (string) $schema->name,
-			'fields' => $this->serializeFields($schema->fields),
+			'fields' => (object) $this->serializeFields($schema->fields),
 			'rules' => $this->serializeRules($schema->rules),
 		];
 

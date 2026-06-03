@@ -85,6 +85,18 @@ final class RoundTripTest extends TestCase
 		// composites reconstruct their children from config, so carry no child list
 		$this->assertArrayNotHasKey('fields', $data['fields']['price']);
 		$this->assertArrayNotHasKey('fields', $data['fields']['billing']);
+
+		// unset currency maps render as objects, not empty arrays
+		$this->assertStringContainsString('"max": {}', $json);
+		$this->assertStringContainsString('"step": {}', $json);
+	}
+
+	#[Test]
+	public function it_serializes_an_empty_field_set_as_an_object(): void
+	{
+		$json = (new JsonSerializer())->serialize(new Facade('empty'));
+
+		$this->assertStringContainsString('"fields": {}', $json);
 	}
 
 	#[Test]

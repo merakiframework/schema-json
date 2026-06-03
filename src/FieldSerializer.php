@@ -227,10 +227,10 @@ final class FieldSerializer
 			],
 			$field instanceof Money => [
 				'allowed_currencies' => $field->allowed,
-				'min' => $this->flattenDecimals($field->min),
-				'max' => $this->flattenDecimals($field->max),
-				'step' => $this->flattenDecimals($field->step),
-				'scale' => $field->scale,
+				'min' => (object) $this->flattenDecimals($field->min),
+				'max' => (object) $this->flattenDecimals($field->max),
+				'step' => (object) $this->flattenDecimals($field->step),
+				'scale' => (object) $field->scale,
 			],
 			default => [],
 		};
