@@ -67,6 +67,45 @@ final class RoundTripTest extends TestCase
 		$this->assertFalse($result->failed());
 	}
 
+	#[Test]
+	public function it_serializes_composites_with_local_nested_keys_and_no_child_list(): void
+	{
+		$schema = new Facade('checkout');
+		$schema->addMoneyField('price', ['AUD' => 2])->minOf('AUD', '0.00');
+		$schema->addAddressField('billing');
+
+		$json = (new JsonSerializer())->serialize($schema);
+		$data = json_decode($json, true);
+
+		$this->assertArrayHasKey('currency', $data['fields']['price']['value']);
+		$this->assertArrayHasKey('amount', $data['fields']['price']['value']);
+		$this->assertStringNotContainsString('price.currency', $json);
+		$this->assertStringNotContainsString('price.amount', $json);
+
+		// composites reconstruct their children from config, so carry no child list
+		$this->assertArrayNotHasKey('fields', $data['fields']['price']);
+		$this->assertArrayNotHasKey('fields', $data['fields']['billing']);
+	}
+
+	#[Test]
+	public function it_round_trips_a_prefilled_composite_value_using_local_keys(): void
+	{
+		$schema = new Facade('checkout');
+		$schema->addMoneyField('price', ['AUD' => 2])
+			->minOf('AUD', '0.00')
+			->prefill(['currency' => 'AUD', 'amount' => '1500']);
+
+		$serializer = new JsonSerializer();
+		$json = $serializer->serialize($schema);
+		$rebuilt = (new JsonDeserializer())->deserialize($json);
+
+		$this->assertSame($json, $serializer->serialize($rebuilt));
+		$this->assertSame(
+			['currency' => 'AUD', 'amount' => '1500'],
+			json_decode($json, true)['fields']['price']['value']
+		);
+	}
+
 	private function representativeSchema(): Facade
 	{
 		$schema = new Facade('everything');

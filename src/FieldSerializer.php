@@ -6,7 +6,6 @@ namespace Meraki\Schema\Json;
 use Meraki\Schema\Field;
 use Meraki\Schema\Field\Composite;
 use Meraki\Schema\Field\Variant;
-use Meraki\Schema\Field\Set as FieldSet;
 use Meraki\Schema\Field\Address;
 use Meraki\Schema\Field\Boolean;
 use Meraki\Schema\Field\CreditCard;
@@ -87,9 +86,15 @@ final class FieldSerializer
 			'type' => Discriminator::fromField($field),
 			'name' => (string) $field->name,
 			'optional' => $field->optional,
-			'value' => $field->defaultValue->unwrap(),
-			'fields' => $this->serializeChildren($field),
+			'value' => $this->serializeValue($field),
 		];
+
+		// Only variants carry a child-field list (the type alternatives). Composite
+		// fields (Address/CreditCard/Money) recreate their children from their own
+		// constructor + config, so they need no children in the JSON.
+		if ($field instanceof Variant) {
+			$data['fields'] = $this->serializeVariantChildren($field);
+		}
 
 		return (object) array_merge($data, $this->extraFor($field));
 	}
@@ -103,8 +108,8 @@ final class FieldSerializer
 		}
 
 		return match (self::TYPES[$type]) {
-			Address::class => $this->deserializeComposite(new Address(new PropertyName($data->name)), $data),
-			CreditCard::class => $this->deserializeComposite(new CreditCard(new PropertyName($data->name)), $data),
+			Address::class => $this->configureComposite(new Address(new PropertyName($data->name)), $data),
+			CreditCard::class => $this->configureComposite(new CreditCard(new PropertyName($data->name)), $data),
 			Variant::class => $this->deserializeVariant($data),
 			Money::class => $this->deserializeMoney($data),
 			Boolean::class => $this->configure(new Boolean(new PropertyName($data->name)), $data),
@@ -231,48 +236,62 @@ final class FieldSerializer
 		};
 	}
 
+	private function serializeValue(Field $field): mixed
+	{
+		if ($field instanceof Composite) {
+			return $this->toLocalKeyedValue($field);
+		}
+
+		return $field->defaultValue->unwrap();
+	}
+
+	/**
+	 * Re-keys a composite's value from full prefixed names to the nicer nested
+	 * local-name shape, e.g. ['price.currency' => 'AUD'] -> { "currency": "AUD" }.
+	 */
+	private function toLocalKeyedValue(Composite $field): \stdClass
+	{
+		$value = (array) $field->defaultValue->unwrap();
+		$local = [];
+
+		foreach ($field->fields as $child) {
+			$local[(string) $child->name->removePrefix()] = $value[(string) $child->name] ?? null;
+		}
+
+		return (object) $local;
+	}
+
 	/**
 	 * @return list<\stdClass>
 	 */
-	private function serializeChildren(Field $field): array
+	private function serializeVariantChildren(Variant $field): array
 	{
-		if (!($field instanceof Composite) && !($field instanceof Variant)) {
-			return [];
-		}
-
 		$children = [];
 
 		foreach ($field->fields as $child) {
-			$children[] = $this->serialize($child);
+			$serialized = $this->serialize($child);
+			$serialized->name = (string) $child->name->removePrefix();
+
+			$children[] = $serialized;
 		}
 
 		return $children;
 	}
 
-	/**
-	 * @return list<Field>
-	 */
-	private function deserializeChildren(\stdClass $data): array
+	private function configureComposite(Composite $field, \stdClass $data): Composite
 	{
-		return array_map($this->deserialize(...), $data->fields);
-	}
-
-	private function deserializeComposite(Composite $field, \stdClass $data): Composite
-	{
-		$field->fields = new FieldSet(...$this->deserializeChildren($data));
 		$field->optional = $data->optional;
-		$field->prefill((array) $data->value);
+		$field->prefill($data->value);
 
 		return $field;
 	}
 
 	private function deserializeVariant(\stdClass $data): Variant
 	{
-		// Set children directly rather than passing them to the constructor: the
-		// serialized child names are already prefixed, and the constructor would
-		// re-prefix them (e.g. "secret.password" -> "secret.secret.password").
-		$field = new Variant(new PropertyName($data->name));
-		$field->fields = new FieldSet(...$this->deserializeChildren($data));
+		// Children are serialized with local names, so passing them to the
+		// constructor prefixes them correctly (e.g. "password" -> "secret.password").
+		$children = array_map($this->deserialize(...), $data->fields);
+		$field = new Variant(new PropertyName($data->name), ...$children);
 		$field->optional = $data->optional;
 		$field->prefill($data->value);
 
@@ -289,7 +308,6 @@ final class FieldSerializer
 		}
 
 		$field = new Money(new PropertyName($data->name), $allowedCurrencies);
-		$field->fields = new FieldSet(...$this->deserializeChildren($data));
 		$field->optional = $data->optional;
 
 		foreach ((array) $data->min as $currency => $amount) {
@@ -304,7 +322,7 @@ final class FieldSerializer
 			$field->inIncrementsOf($currency, $amount);
 		}
 
-		$field->prefill((array) $data->value);
+		$field->prefill($data->value);
 
 		return $field;
 	}
