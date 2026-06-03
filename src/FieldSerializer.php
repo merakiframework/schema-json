@@ -141,7 +141,7 @@ final class FieldSerializer
 				(new Uuid(new PropertyName($data->name)))->restrictToVersion(...$data->versions),
 				$data
 			),
-			Enum::class => $this->configure(new Enum(new PropertyName($data->name), $data->one_of), $data),
+			Enum::class => $this->configure(new Enum(new PropertyName($data->name), $data->oneOf), $data),
 			EmailAddress::class => $this->deserializeEmailAddress($data),
 			Password::class => $this->deserializePassword($data),
 			Passphrase::class => $this->configure(
@@ -169,15 +169,15 @@ final class FieldSerializer
 				'from' => (string) $field->from,
 				'until' => (string) $field->until,
 				'interval' => (string) $field->interval,
-				'precision_unit' => $field->precision->value,
-				'precision_mode' => $field->precisionMode(),
+				'precisionUnit' => $field->precision->value,
+				'precisionMode' => $field->precisionMode(),
 			],
 			$field instanceof Time => [
 				'from' => (string) $field->from,
 				'until' => (string) $field->until,
 				'step' => (string) $field->step,
-				'precision_unit' => $field->precision->value,
-				'precision_mode' => $field->precisionMode(),
+				'precisionUnit' => $field->precision->value,
+				'precisionMode' => $field->precisionMode(),
 			],
 			$field instanceof Duration => [
 				'min' => (string) $field->min,
@@ -194,13 +194,13 @@ final class FieldSerializer
 			$field instanceof NameField => ['min' => $field->min, 'max' => $field->max],
 			$field instanceof Uri => ['min' => $field->min, 'max' => $field->max],
 			$field instanceof Uuid => ['versions' => $field->versions],
-			$field instanceof Enum => ['one_of' => $field->oneOf],
+			$field instanceof Enum => ['oneOf' => $field->oneOf],
 			$field instanceof EmailAddress => [
 				'format' => $field->format->value,
 				'min' => $field->min,
 				'max' => $field->max,
-				'allowed_domains' => $field->allowedDomains,
-				'disallowed_domains' => $field->disallowedDomains,
+				'allowedDomains' => $field->allowedDomains,
+				'disallowedDomains' => $field->disallowedDomains,
 			],
 			$field instanceof Password => [
 				'length' => $field->length->toTuple(),
@@ -208,7 +208,7 @@ final class FieldSerializer
 				'uppercase' => $field->uppercase->toTuple(),
 				'digits' => $field->digits->toTuple(),
 				'symbols' => $field->symbols->toTuple(),
-				'any_of' => $field->anyOf,
+				'anyOf' => $field->anyOf,
 			],
 			$field instanceof Passphrase => [
 				'entropy' => $field->entropy,
@@ -216,15 +216,15 @@ final class FieldSerializer
 				'dictionary' => $field->dictionary,
 			],
 			$field instanceof File => [
-				'min_count' => $field->minCount,
-				'max_count' => $field->maxCount,
-				'min_size' => $field->minSize,
-				'max_size' => $field->maxSize,
-				'allowed_types' => $field->allowedTypes,
-				'disallowed_types' => $field->disallowedTypes,
+				'minCount' => $field->minCount,
+				'maxCount' => $field->maxCount,
+				'minSize' => $field->minSize,
+				'maxSize' => $field->maxSize,
+				'allowedTypes' => $field->allowedTypes,
+				'disallowedTypes' => $field->disallowedTypes,
 			],
 			$field instanceof Money => [
-				'allowed_currencies' => $field->allowed,
+				'allowedCurrencies' => $field->allowed,
 				'min' => (object) $this->flattenDecimals($field->min),
 				'max' => (object) $this->flattenDecimals($field->max),
 				'step' => (object) $this->flattenDecimals($field->step),
@@ -301,7 +301,7 @@ final class FieldSerializer
 		$scale = (array) $data->scale;
 		$allowedCurrencies = [];
 
-		foreach ($data->allowed_currencies as $currency) {
+		foreach ($data->allowedCurrencies as $currency) {
 			$allowedCurrencies[$currency] = $scale[$currency];
 		}
 
@@ -339,13 +339,13 @@ final class FieldSerializer
 
 	private function deserializeDateTime(\stdClass $data): DateTime
 	{
-		$caster = match ($data->precision_mode) {
+		$caster = match ($data->precisionMode) {
 			'truncate' => new DateTimeTruncate(),
 			'preserve' => new DateTimePreserve(),
-			default => throw new InvalidArgumentException('Unknown precision mode: ' . $data->precision_mode),
+			default => throw new InvalidArgumentException('Unknown precision mode: ' . $data->precisionMode),
 		};
 
-		$field = new DateTime(new PropertyName($data->name), DateTimePrecisionUnit::from($data->precision_unit), $caster);
+		$field = new DateTime(new PropertyName($data->name), DateTimePrecisionUnit::from($data->precisionUnit), $caster);
 		$field->optional = $data->optional;
 		$field->prefill($data->value);
 		// Set bounds directly: the until()/from() setters truncate to the field's
@@ -359,13 +359,13 @@ final class FieldSerializer
 
 	private function deserializeTime(\stdClass $data): Time
 	{
-		$caster = match ($data->precision_mode) {
+		$caster = match ($data->precisionMode) {
 			'truncate' => new TimeTruncate(),
 			'preserve' => new TimePreserve(),
-			default => throw new InvalidArgumentException('Unknown precision mode: ' . $data->precision_mode),
+			default => throw new InvalidArgumentException('Unknown precision mode: ' . $data->precisionMode),
 		};
 
-		$field = new Time(new PropertyName($data->name), TimePrecisionUnit::from($data->precision_unit), $caster);
+		$field = new Time(new PropertyName($data->name), TimePrecisionUnit::from($data->precisionUnit), $caster);
 		$field->optional = $data->optional;
 		// Set bounds directly: the from()/until() setters truncate to the field's
 		// precision, which would mangle a full-precision default bound on round-trip.
@@ -394,8 +394,8 @@ final class FieldSerializer
 
 		return $field->minLengthOf($data->min)
 			->maxLengthOf($data->max)
-			->allowDomain(...$data->allowed_domains)
-			->disallowDomain(...$data->disallowed_domains)
+			->allowDomain(...$data->allowedDomains)
+			->disallowDomain(...$data->disallowedDomains)
 			->prefill($data->value);
 	}
 
@@ -408,7 +408,7 @@ final class FieldSerializer
 		$field->uppercase = Range::fromTuple($data->uppercase);
 		$field->digits = Range::fromTuple($data->digits);
 		$field->symbols = Range::fromTuple($data->symbols);
-		$field->anyOf = $data->any_of;
+		$field->anyOf = $data->anyOf;
 
 		return $field->prefill($data->value);
 	}
@@ -418,12 +418,12 @@ final class FieldSerializer
 		$field = new File(new PropertyName($data->name));
 		$field->optional = $data->optional;
 
-		return $field->atLeast($data->min_count)
-			->atMost($data->max_count)
-			->minFileSizeOf($data->min_size)
-			->maxFileSizeOf($data->max_size)
-			->allowTypes(...$data->allowed_types)
-			->disallowTypes(...$data->disallowed_types)
+		return $field->atLeast($data->minCount)
+			->atMost($data->maxCount)
+			->minFileSizeOf($data->minSize)
+			->maxFileSizeOf($data->maxSize)
+			->allowTypes(...$data->allowedTypes)
+			->disallowTypes(...$data->disallowedTypes)
 			->prefill($data->value);
 	}
 
