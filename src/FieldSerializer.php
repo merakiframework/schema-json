@@ -222,8 +222,6 @@ final class FieldSerializer
 				'max_size' => $field->maxSize,
 				'allowed_types' => $field->allowedTypes,
 				'disallowed_types' => $field->disallowedTypes,
-				'allowed_sources' => $field->allowedSources,
-				'disallowed_sources' => $field->disallowedSources,
 			],
 			$field instanceof Money => [
 				'allowed_currencies' => $field->allowed,
@@ -419,8 +417,6 @@ final class FieldSerializer
 	{
 		$field = new File(new PropertyName($data->name));
 		$field->optional = $data->optional;
-		$field->allowedSources = $data->allowed_sources;
-		$field->disallowedSources = $data->disallowed_sources;
 
 		return $field->atLeast($data->min_count)
 			->atMost($data->max_count)
