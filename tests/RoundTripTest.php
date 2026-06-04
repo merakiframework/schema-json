@@ -64,7 +64,7 @@ final class RoundTripTest extends TestCase
 
 		$result = $rebuilt->validate(['full_name' => 'Jane Doe', 'subscribe' => true]);
 
-		$this->assertFalse($result->failed());
+		$this->assertFalse($result->anyFailed());
 	}
 
 	#[Test]
