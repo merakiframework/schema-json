@@ -22,6 +22,7 @@ use Meraki\Schema\Field\Passphrase;
 use Meraki\Schema\Field\Password;
 use Meraki\Schema\Field\Placeholder;
 use Meraki\Schema\Field\PhoneNumber;
+use Meraki\Schema\Field\PhoneNumber\Type as PhoneNumberType;
 use Meraki\Schema\Field\Text;
 use Meraki\Schema\Field\Time;
 use Meraki\Schema\Field\Uri;
@@ -114,7 +115,11 @@ final class FieldSerializer
 			Money::class => $this->deserializeMoney($data),
 			Boolean::class => $this->configure(new Boolean(new PropertyName($data->name)), $data),
 			Placeholder::class => $this->configure(new Placeholder(new PropertyName($data->name)), $data),
-			PhoneNumber::class => $this->configure(new PhoneNumber(new PropertyName($data->name)), $data),
+			PhoneNumber::class => $this->configure(
+				(new PhoneNumber(new PropertyName($data->name), $data->allowedCountries))
+					->ofType(PhoneNumberType::from($data->numberType)),
+				$data
+			),
 			Date::class => $this->deserializeDate($data),
 			DateTime::class => $this->deserializeDateTime($data),
 			Duration::class => $this->deserializeDuration($data),
@@ -193,6 +198,10 @@ final class FieldSerializer
 			$field instanceof Text => ['min' => $field->min, 'max' => $field->max, 'pattern' => $field->pattern],
 			$field instanceof NameField => ['min' => $field->min, 'max' => $field->max],
 			$field instanceof Uri => ['min' => $field->min, 'max' => $field->max],
+			$field instanceof PhoneNumber => [
+				'allowedCountries' => $field->allowed,
+				'numberType' => $field->allowedType->value,
+			],
 			$field instanceof Uuid => ['versions' => $field->versions],
 			$field instanceof Enum => ['oneOf' => $field->oneOf],
 			$field instanceof EmailAddress => [

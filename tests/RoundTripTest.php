@@ -135,7 +135,7 @@ final class RoundTripTest extends TestCase
 		$schema->addMoneyField('salary', ['AUD' => 2, 'USD' => 2])->minOf('AUD', '0.00');
 		$schema->addUuidField('id');
 		$schema->addUriField('website');
-		$schema->addPhoneNumberField('phone');
+		$schema->addPhoneNumberField('phone', ['AU', 'NZ'])->ofType(\Meraki\Schema\Field\PhoneNumber\Type::Mobile);
 		$schema->addPasswordField('password');
 		$schema->addPassphraseField('passphrase');
 		$schema->addFileField('resume');
