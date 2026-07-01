@@ -38,6 +38,30 @@ final class RoundTripTest extends TestCase
 	}
 
 	#[Test]
+	public function it_round_trips_a_collection_whose_item_contains_a_composite(): void
+	{
+		$schema = new Facade('booking');
+		$schema->addCollectionField('lessons', function (Facade $item): void {
+			$item->addDateTimeField('when');
+			$item->addAddressField('pickup');
+			$item->addTextField('notes')->makeOptional();
+		})->minItems(1);
+
+		$json = (new JsonSerializer())->serialize($schema);
+		$rebuilt = (new JsonDeserializer())->deserialize($json);
+
+		// the nested composite is rebuilt and re-prefixed correctly
+		$pickup = $rebuilt->fields->findByName('lessons')->fields->findByName('lessons.pickup');
+		$this->assertContains('lessons.pickup.street', $pickup->fields->listFieldNames());
+
+		// the format is complete (byte-identical re-serialize) and still validates
+		$this->assertSame($json, (new JsonSerializer())->serialize($rebuilt));
+		$addr = ['street' => '1 King St', 'city' => 'Brisbane', 'state' => 'QLD', 'postcode' => '4000', 'country' => 'AU'];
+		$result = $rebuilt->validate(['lessons' => [['when' => '2026-03-01T10:00:00', 'pickup' => $addr, 'notes' => 'x']]]);
+		$this->assertFalse($result->anyFailed());
+	}
+
+	#[Test]
 	public function it_uses_kebab_cased_class_name_discriminators_not_the_type_property(): void
 	{
 		$schema = new Facade('cards');
@@ -116,6 +140,56 @@ final class RoundTripTest extends TestCase
 			['currency' => 'AUD', 'amount' => '1500'],
 			json_decode($json, true)['fields']['price']['value']
 		);
+	}
+
+	#[Test]
+	public function it_round_trips_a_collection_and_a_must_be_accepted_boolean(): void
+	{
+		$schema = new Facade('booking');
+		$schema->addCollectionField('lessons', function (Facade $item): void {
+			$item->addDateField('date');
+			$item->addTimeField('time');
+		})->minItems(1)->maxItems(5);
+		$schema->addBooleanField('terms')->mustBeAccepted();
+
+		$serializer = new JsonSerializer();
+		$json = $serializer->serialize($schema);
+		$rebuilt = (new JsonDeserializer())->deserialize($json);
+
+		// Byte-identical re-serialization proves the format captures everything.
+		$this->assertSame($json, $serializer->serialize($rebuilt));
+		$this->assertStringContainsString('"type": "collection"', $json);
+		$this->assertStringContainsString('"minItems": 1', $json);
+		$this->assertStringContainsString('"maxItems": 5', $json);
+		$this->assertStringContainsString('"mustBeAccepted": true', $json);
+
+		// The rebuilt schema validates as expected.
+		$result = $rebuilt->validate([
+			'lessons' => [['date' => '2026-01-01', 'time' => '10:00:00']],
+			'terms' => true,
+		]);
+		$this->assertFalse($result->anyFailed());
+	}
+
+	#[Test]
+	public function it_round_trips_a_pair_with_rule_using_not_equals_and_ignore(): void
+	{
+		$schema = new Facade('contact');
+		$schema->addEnumField('contact_method', ['email', 'phone'])
+			->pairWith(
+				new \Meraki\Schema\Field\EmailAddress(new Name('email_address')),
+				function (\Meraki\Schema\Rule\FieldBuilder $rule, \Meraki\Schema\Field\EmailAddress $email): void {
+					$rule->when($this)->notEquals('email')->thenMakeOptional($email)->thenIgnore($email);
+				}
+			);
+
+		$serializer = new JsonSerializer();
+		$json = $serializer->serialize($schema);
+		$rebuilt = (new JsonDeserializer())->deserialize($json);
+
+		$this->assertSame($json, $serializer->serialize($rebuilt));
+		$this->assertStringContainsString('"type": "not_equals"', $json);
+		$this->assertStringContainsString('"action": "ignore"', $json);
 	}
 
 	private function representativeSchema(): Facade

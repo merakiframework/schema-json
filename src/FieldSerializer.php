@@ -8,6 +8,7 @@ use Meraki\Schema\Field\Composite;
 use Meraki\Schema\Field\Variant;
 use Meraki\Schema\Field\Address;
 use Meraki\Schema\Field\Boolean;
+use Meraki\Schema\Field\Collection;
 use Meraki\Schema\Field\CreditCard;
 use Meraki\Schema\Field\Date;
 use Meraki\Schema\Field\DateTime;
@@ -60,6 +61,7 @@ final class FieldSerializer
 	private const TYPES = [
 		'address' => Address::class,
 		'boolean' => Boolean::class,
+		'collection' => Collection::class,
 		'credit-card' => CreditCard::class,
 		'date' => Date::class,
 		'date-time' => DateTime::class,
@@ -90,11 +92,11 @@ final class FieldSerializer
 			'value' => $this->serializeValue($field),
 		];
 
-		// Only variants carry a child-field list (the type alternatives). Composite
-		// fields (Address/CreditCard/Money) recreate their children from their own
-		// constructor + config, so they need no children in the JSON.
-		if ($field instanceof Variant) {
-			$data['fields'] = $this->serializeVariantChildren($field);
+		// Variants and collections carry a child-field list (the type alternatives /
+		// the item template). The other composites (Address/CreditCard/Money) recreate
+		// their children from their own constructor + config, so they need none.
+		if ($field instanceof Variant || $field instanceof Collection) {
+			$data['fields'] = $this->serializeChildren($field);
 		}
 
 		return (object) array_merge($data, $this->extraFor($field));
@@ -112,8 +114,9 @@ final class FieldSerializer
 			Address::class => $this->configureComposite(new Address(new PropertyName($data->name)), $data),
 			CreditCard::class => $this->configureComposite(new CreditCard(new PropertyName($data->name)), $data),
 			Variant::class => $this->deserializeVariant($data),
+			Collection::class => $this->deserializeCollection($data),
 			Money::class => $this->deserializeMoney($data),
-			Boolean::class => $this->configure(new Boolean(new PropertyName($data->name)), $data),
+			Boolean::class => $this->deserializeBoolean($data),
 			Placeholder::class => $this->configure(new Placeholder(new PropertyName($data->name)), $data),
 			PhoneNumber::class => $this->configure(
 				(new PhoneNumber(new PropertyName($data->name), $data->allowedCountries))
@@ -165,6 +168,8 @@ final class FieldSerializer
 	private function extraFor(Field $field): array
 	{
 		return match (true) {
+			$field instanceof Boolean => ['mustBeAccepted' => $field->mustBeAccepted],
+			$field instanceof Collection => ['minItems' => $field->minItems, 'maxItems' => $field->maxItems],
 			$field instanceof Date => [
 				'from' => (string) $field->from,
 				'until' => (string) $field->until,
@@ -245,6 +250,12 @@ final class FieldSerializer
 
 	private function serializeValue(Field $field): mixed
 	{
+		// A collection's value is a *list* of items (already keyed by local sub-name),
+		// so it must be handled before the generic composite (single-group) case.
+		if ($field instanceof Collection) {
+			return array_values((array) $field->defaultValue->unwrap());
+		}
+
 		if ($field instanceof Composite) {
 			return $this->toLocalKeyedValue($field);
 		}
@@ -269,9 +280,12 @@ final class FieldSerializer
 	}
 
 	/**
+	 * Serializes a variant's alternatives or a collection's item template, each child
+	 * carrying its local (unprefixed) name so the constructor can re-prefix on rebuild.
+	 *
 	 * @return list<\stdClass>
 	 */
-	private function serializeVariantChildren(Variant $field): array
+	private function serializeChildren(Variant|Collection $field): array
 	{
 		$children = [];
 
@@ -303,6 +317,37 @@ final class FieldSerializer
 		$field->prefill($data->value);
 
 		return $field;
+	}
+
+	private function deserializeCollection(\stdClass $data): Collection
+	{
+		// The item template is serialized with local names; the constructor re-prefixes.
+		$children = array_map($this->deserialize(...), $data->fields);
+		$field = new Collection(new PropertyName($data->name), ...$children);
+		$field->optional = $data->optional;
+
+		if ($data->minItems > 0) {
+			$field->minItems($data->minItems);
+		}
+
+		if ($data->maxItems !== null) {
+			$field->maxItems($data->maxItems);
+		}
+
+		return $field->prefill($data->value);
+	}
+
+	private function deserializeBoolean(\stdClass $data): Boolean
+	{
+		$field = new Boolean(new PropertyName($data->name));
+
+		if ($data->mustBeAccepted ?? false) {
+			$field->mustBeAccepted();
+		}
+
+		$field->optional = $data->optional;
+
+		return $field->prefill($data->value);
 	}
 
 	private function deserializeMoney(\stdClass $data): Money

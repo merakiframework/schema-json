@@ -8,8 +8,10 @@ use Meraki\Schema\Rule\Condition;
 use Meraki\Schema\Rule\Condition\AllOf;
 use Meraki\Schema\Rule\Condition\AnyOf;
 use Meraki\Schema\Rule\Condition\Equals;
+use Meraki\Schema\Rule\Condition\NotEquals;
 use Meraki\Schema\Rule\Outcome;
 use Meraki\Schema\Rule\Outcome\_Require;
+use Meraki\Schema\Rule\Outcome\Ignore;
 use Meraki\Schema\Rule\Outcome\MakeOptional;
 use InvalidArgumentException;
 
@@ -55,6 +57,11 @@ final class RuleSerializer
 				'target' => $condition->target,
 				'expected' => $condition->expected,
 			],
+			$condition instanceof NotEquals => (object) [
+				'type' => 'not_equals',
+				'target' => $condition->target,
+				'expected' => $condition->expected,
+			],
 			default => throw new InvalidArgumentException('Unknown condition: ' . $condition::class),
 		};
 	}
@@ -65,6 +72,7 @@ final class RuleSerializer
 			'all_of' => new AllOf(...array_map($this->deserializeCondition(...), $data->conditions)),
 			'any_of' => new AnyOf(...array_map($this->deserializeCondition(...), $data->conditions)),
 			'equals' => new Equals($data->target, $data->expected),
+			'not_equals' => new NotEquals($data->target, $data->expected),
 			default => throw new InvalidArgumentException('Unknown condition type: ' . $data->type),
 		};
 	}
@@ -74,6 +82,7 @@ final class RuleSerializer
 		return match (true) {
 			$outcome instanceof _Require => (object) ['action' => 'require', 'field' => (string) $outcome->getScope()],
 			$outcome instanceof MakeOptional => (object) ['action' => 'make_optional', 'field' => (string) $outcome->getScope()],
+			$outcome instanceof Ignore => (object) ['action' => 'ignore', 'field' => (string) $outcome->getScope()],
 			default => throw new InvalidArgumentException('Unknown outcome: ' . $outcome::class),
 		};
 	}
@@ -83,6 +92,7 @@ final class RuleSerializer
 		return match ($data->action) {
 			'require' => new _Require($data->field),
 			'make_optional' => new MakeOptional($data->field),
+			'ignore' => new Ignore($data->field),
 			default => throw new InvalidArgumentException('Unknown outcome action: ' . $data->action),
 		};
 	}
