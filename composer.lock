@@ -223,23 +223,23 @@
         },
         {
             "name": "meraki/schema",
-            "version": "v1.12.0-alpha",
+            "version": "v1.12.1-alpha",
             "source": {
                 "type": "git",
                 "url": "https://github.com/merakiframework/schema.git",
-                "reference": "56fa64dc79c15b133caebc5dd127bd37c02ab05d"
+                "reference": "545a97e48f5bd04dbbfc41baa46dc2d4d4224054"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/merakiframework/schema/zipball/56fa64dc79c15b133caebc5dd127bd37c02ab05d",
-                "reference": "56fa64dc79c15b133caebc5dd127bd37c02ab05d",
+                "url": "https://api.github.com/repos/merakiframework/schema/zipball/545a97e48f5bd04dbbfc41baa46dc2d4d4224054",
+                "reference": "545a97e48f5bd04dbbfc41baa46dc2d4d4224054",
                 "shasum": ""
             },
             "require": {
                 "brick/date-time": "^0.7.0",
                 "brick/math": "^0.12.1",
                 "giggsey/libphonenumber-for-php-lite": "^8.13",
-                "php": "^8.2"
+                "php": "^8.4"
             },
             "require-dev": {
                 "phpunit/phpunit": "^11.3"
@@ -271,10 +271,10 @@
             ],
             "description": "A library that provides a flexible, UI-agnostic solution for defining, validating, and serializing form schemas that can be used across multiple rendering environments and formats.",
             "support": {
-                "source": "https://github.com/merakiframework/schema/tree/v1.12.0-alpha",
+                "source": "https://github.com/merakiframework/schema/tree/v1.12.1-alpha",
                 "issues": "https://github.com/merakiframework/schema/issues"
             },
-            "time": "2026-07-01T01:59:53+00:00"
+            "time": "2026-07-04T10:26:51+00:00"
         },
         {
             "name": "symfony/polyfill-mbstring",
