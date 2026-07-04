@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "5c948efd184cb38af013e2f9842c52d5",
+    "content-hash": "c76c132f6235cebf1cd67d3f9b53bd82",
     "packages": [
         {
             "name": "brick/date-time",
@@ -223,11 +223,17 @@
         },
         {
             "name": "meraki/schema",
-            "version": "dev-main",
+            "version": "v1.12.0-alpha",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/merakiframework/schema.git",
+                "reference": "56fa64dc79c15b133caebc5dd127bd37c02ab05d"
+            },
             "dist": {
-                "type": "path",
-                "url": "../schema",
-                "reference": "25326c64d5ec4dfafb486ecc2aeb04bad6ee305b"
+                "type": "zip",
+                "url": "https://api.github.com/repos/merakiframework/schema/zipball/56fa64dc79c15b133caebc5dd127bd37c02ab05d",
+                "reference": "56fa64dc79c15b133caebc5dd127bd37c02ab05d",
+                "shasum": ""
             },
             "require": {
                 "brick/date-time": "^0.7.0",
@@ -264,10 +270,11 @@
                 }
             ],
             "description": "A library that provides a flexible, UI-agnostic solution for defining, validating, and serializing form schemas that can be used across multiple rendering environments and formats.",
-            "transport-options": {
-                "symlink": true,
-                "relative": true
-            }
+            "support": {
+                "source": "https://github.com/merakiframework/schema/tree/v1.12.0-alpha",
+                "issues": "https://github.com/merakiframework/schema/issues"
+            },
+            "time": "2026-07-01T01:59:53+00:00"
         },
         {
             "name": "symfony/polyfill-mbstring",
@@ -2139,9 +2146,9 @@
         }
     ],
     "aliases": [],
-    "minimum-stability": "dev",
+    "minimum-stability": "alpha",
     "stability-flags": {
-        "meraki/schema": 20
+        "meraki/schema": 15
     },
     "prefer-stable": true,
     "prefer-lowest": false,
